@@ -1,12 +1,12 @@
-# Chat App
+# Chat App — YouTube AI Chat Assistant
 
-A React chatbot with Gemini AI, web search, user auth, MongoDB persistence, and client-side data analysis. Glassmorphism UI with streaming responses, CSV upload, and code execution.
+A React chatbot with Gemini AI, web search, user auth, MongoDB persistence, and client-side data analysis. This version extends the app into a **YouTube AI Chat Assistant**: personalized chat, YouTube channel data download, JSON-based channel analysis in chat, and AI tools for plotting metrics, playing videos, computing stats, and generating images. Glassmorphism UI with streaming responses, CSV/JSON upload, and code execution.
 
 ## How It Works
 
-- **Frontend (React)** – Login/create account, chat UI with streaming, drag-and-drop CSV/images, Recharts bar charts
-- **Backend (Express)** – REST API for users and sessions, connects to MongoDB
-- **AI (Gemini)** – Streaming chat, Google Search grounding, Python code execution, and function calling for client-side tools
+- **Frontend (React)** – Login/create account (with first and last name), chat UI with streaming, tabs for **Chat** and **YouTube Channel Download**, drag-and-drop CSV/JSON/images, Recharts and custom charts, image generation display
+- **Backend (Express)** – REST API for users (including firstName, lastName), sessions, messages, **YouTube channel data** (SSE progress), and **image generation** (Gemini)
+- **AI (Gemini)** – Streaming chat, Google Search grounding, Python code execution, function calling for CSV tools and **YouTube/channel JSON tools** (generateImage, plot_metric_vs_time, play_video, compute_stats_json)
 - **Storage (MongoDB)** – Users and chat sessions stored in `chatapp` database
 
 ## API Keys & Environment Variables
@@ -18,6 +18,7 @@ Create a `.env` file in the project root with:
 | `REACT_APP_GEMINI_API_KEY` | Yes | Frontend (baked in at build) | Google Gemini API key. Get one at [Google AI Studio](https://aistudio.google.com/apikey). |
 | `REACT_APP_MONGODB_URI` | Yes | Backend | MongoDB Atlas connection string. Format: `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/` |
 | `REACT_APP_API_URL` | Production only | Frontend (baked in at build) | Full URL of the backend, e.g. `https://your-backend.onrender.com`. Leave blank for local dev (proxy handles it). |
+| `YOUTUBE_API_KEY` or `REACT_APP_YOUTUBE_API_KEY` | For YouTube tab | Backend | YouTube Data API v3 key for the "YouTube Channel Download" tab. Get one in [Google Cloud Console](https://console.cloud.google.com/apis/credentials). |
 
 The backend also accepts `MONGODB_URI` or `REACT_APP_MONGO_URI` as the MongoDB connection string if you prefer those names.
 
@@ -26,6 +27,8 @@ The backend also accepts `MONGODB_URI` or `REACT_APP_MONGO_URI` as the MongoDB c
 ```
 REACT_APP_GEMINI_API_KEY=AIzaSy...
 REACT_APP_MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/
+# Optional: for "YouTube Channel Download" tab (fetch real channel data)
+# YOUTUBE_API_KEY=your_youtube_data_api_v3_key
 # REACT_APP_API_URL not needed locally — the dev server proxies /api to localhost:3001
 ```
 
@@ -49,6 +52,8 @@ One document per registered user.
 | `username` | string | Lowercase username |
 | `password` | string | bcrypt hash |
 | `email` | string | Email address (optional) |
+| `firstName` | string | First name (optional) |
+| `lastName` | string | Last name (optional) |
 | `createdAt` | string | ISO timestamp |
 
 #### Collection: `sessions`
@@ -212,20 +217,37 @@ All packages are installed via `npm install`. Key dependencies:
 
 ## Features
 
-- **Create account / Login** – Username + password, hashed with bcrypt
-- **Session-based chat history** – Each conversation is a separate session; sidebar lists all chats with delete option
-- **Streaming Gemini responses** – Text streams in real time with animated "..." while thinking; Stop button to cancel
-- **Google Search grounding** – Answers include cited web sources for factual queries
-- **Python code execution** – Gemini writes and runs Python for plots, regression, histogram, scatter, and any analysis the JS tools can't handle
-- **CSV upload** – Drag-and-drop or click to attach a CSV; a slim version of the data (key columns as plain text) plus a full statistical summary are sent to Gemini automatically
-- **Auto-computed engagement column** – When a CSV has `Favorite Count` and `View Count` columns, an `engagement` ratio (Favorite Count / View Count) is added automatically to every row
-- **Client-side data analysis tools** – Fast, zero-cost function-calling tools that run in the browser. Gemini calls these automatically for data questions; results are saved to MongoDB alongside the message:
-  - `compute_column_stats(column)` – mean, median, std, min, max, count for any numeric column
-  - `get_value_counts(column, top_n)` – frequency count of each unique value in a categorical column
-  - `get_top_tweets(sort_column, n, ascending)` – top or bottom N tweets sorted by any metric (including `engagement`), with tweet text and key metrics
-- **Tool routing logic** – The app automatically routes requests: client-side JS tools for simple stats, Python code execution for plots and complex models, Google Search for factual queries
-- **Markdown rendering** – AI responses render headers, lists, code blocks, tables, and links
-- **Image support** – Attach images via drag-and-drop, the 📎 button, or paste from clipboard (Ctrl+V)
+### Account & personalization
+
+- **Create account / Login** – Username + password, hashed with bcrypt. **First Name** and **Last Name** are collected on sign-up and stored in the database.
+- **Personalized chat** – After login, the AI is given your first and last name and is instructed to address you by name in the first message of each conversation.
+
+### Chat & sessions
+
+- **Session-based chat history** – Each conversation is a separate session; sidebar lists all chats with delete option.
+- **Streaming Gemini responses** – Text streams in real time with animated "..." while thinking; Stop button to cancel.
+- **Google Search grounding** – Answers include cited web sources for factual queries.
+- **Markdown rendering** – AI responses render headers, lists, code blocks, tables, and links.
+- **Image support** – Attach images via drag-and-drop, the 📎 button, or paste from clipboard (Ctrl+V).
+
+### YouTube AI Chat Assistant (new)
+
+- **YouTube Channel Download tab** – After login, a second tab **"YouTube Channel Download"** lets you enter a YouTube channel URL (e.g. `https://www.youtube.com/@veritasium`), set max videos (1–100, default 10), and click **Download Channel Data**. The app fetches metadata (title, description, duration, release date, view count, like count, comment count, video URL, thumbnail) via the YouTube Data API v3, streams progress with a progress bar, and lets you **download the result as a JSON file**. A sample file `public/veritasium_10_videos.json` is included so the format works without an API key.
+- **JSON chat input** – You can **drag a channel JSON file** (or select it via the attach button) into the chat. The data is loaded into the conversation context and kept in memory so the AI can use the YouTube tools on it. The system prompt explains how to handle JSON channel data.
+- **Chat tools for channel data** – When channel JSON is loaded, the AI has four tools (exact names used for grading):
+  - **generateImage** – Generate an image from a text prompt and an optional anchor image (e.g. “make this look like a watercolor”). The generated image is shown in the chat; you can click to enlarge and download.
+  - **plot_metric_vs_time** – Plot any numeric field (viewCount, likeCount, commentCount, etc.) vs time for the channel videos. Rendered as a React line chart in the chat; click to enlarge and download as SVG.
+  - **play_video** – When you ask to “play” or “open” a video, the AI returns a clickable card with title and thumbnail. Clicking opens the video in a new tab on YouTube. You can specify the video by title (e.g. “play the asbestos video”), ordinal (“first”, “second”), or “most viewed”.
+  - **compute_stats_json** – Compute mean, median, std, min, and max for any numeric field in the channel JSON (e.g. viewCount, likeCount, commentCount, duration). Used when you ask for statistics, averages, or distribution of a column.
+- **Prompt engineering** – The system prompt in `public/prompt_chat.txt` defines the AI as a **YouTube AI Chat Assistant**, describes how JSON channel data is provided, and documents all four tools so the AI knows when and how to use them.
+
+### CSV & code (existing)
+
+- **CSV upload** – Drag-and-drop or click to attach a CSV; a slim version of the data (key columns as plain text) plus a full statistical summary are sent to Gemini automatically.
+- **Auto-computed engagement column** – When a CSV has `Favorite Count` and `View Count` columns, an `engagement` ratio (Favorite Count / View Count) is added automatically to every row.
+- **Client-side CSV tools** – Gemini can call: `compute_column_stats(column)`, `get_value_counts(column, top_n)`, `get_top_tweets(sort_column, n, ascending)` for fast, in-browser analysis; results are saved to MongoDB with the message.
+- **Python code execution** – Gemini can write and run Python for plots, regression, histograms, and analysis the JS tools can’t handle.
+- **Tool routing** – The app routes by context: YouTube tools when channel JSON is loaded, CSV tools when only CSV is loaded, Python/code when needed, and Google Search for general queries.
 
 ## Chat System Prompt
 

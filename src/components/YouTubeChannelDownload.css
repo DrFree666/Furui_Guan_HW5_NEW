@@ -1,0 +1,134 @@
+.youtube-download-page {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.youtube-download-card {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1.75rem;
+}
+
+.youtube-download-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  color: #fff;
+}
+
+.youtube-download-desc {
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.45;
+}
+
+.youtube-download-form label {
+  display: block;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.youtube-download-form input {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.youtube-download-form input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.youtube-download-btn {
+  margin-top: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.youtube-download-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.youtube-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.youtube-progress-wrap {
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.youtube-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.youtube-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #818cf8, #a78bfa);
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+.youtube-progress-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 2.5rem;
+}
+
+.youtube-download-error {
+  margin-top: 1rem;
+  color: #f87171;
+  font-size: 0.9rem;
+}
+
+.youtube-result {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.youtube-result-summary {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.youtube-download-json-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+  color: #86efac;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.youtube-download-json-btn:hover {
+  background: rgba(34, 197, 94, 0.3);
+}

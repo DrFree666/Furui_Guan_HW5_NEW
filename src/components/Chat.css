@@ -975,3 +975,185 @@
 .chat-empty-state p {
   margin: 0;
 }
+
+/* ── Tabs (Chat / YouTube Channel Download) ────────────────────────────────── */
+
+.chat-main-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 1.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.chat-main-tabs button {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.chat-main-tabs button:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chat-main-tabs button.active {
+  color: #fff;
+  border-bottom-color: #818cf8;
+}
+
+/* ── Chart overlay (enlarge modal) ─────────────────────────────────────────── */
+
+.chart-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.chart-overlay-inner {
+  background: rgba(20, 20, 40, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 1.25rem;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.metric-vs-time-chart {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.metric-vs-time-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.metric-vs-time-actions,
+.generated-image-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.chart-enlarge-btn,
+.chart-download-btn,
+.generated-image-actions button {
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.chart-enlarge-btn:hover,
+.chart-download-btn:hover,
+.generated-image-actions button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Play video card ──────────────────────────────────────────────────────── */
+
+.play-video-card {
+  margin: 0.75rem 0;
+  max-width: 360px;
+}
+
+.play-video-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.play-video-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.play-video-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.play-video-title {
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.play-video-hint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Generated image block ─────────────────────────────────────────────────── */
+
+.generated-image-block {
+  margin: 0.75rem 0;
+}
+
+.generated-image-img {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+.generated-image-enlarged {
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: 12px;
+  display: block;
+}
+
+/* ── JSON chip ─────────────────────────────────────────────────────────────── */
+
+.json-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #fde047;
+  margin-bottom: 0.5rem;
+}
+
+.json-chip-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  font-size: 1rem;
+  line-height: 1;
+}

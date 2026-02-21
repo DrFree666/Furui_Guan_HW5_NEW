@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { streamChat, chatWithCsvTools, CODE_KEYWORDS } from '../services/gemini';
+import { streamChat, chatWithCsvTools, chatWithYouTubeTools, CODE_KEYWORDS } from '../services/gemini';
 import { parseCsvToRows, executeTool, computeDatasetSummary, enrichWithEngagement, buildSlimCsv } from '../services/csvTools';
+import { executeYouTubeTool } from '../services/youtubeTools';
 import {
   getSessions,
   createSession,
@@ -11,6 +12,10 @@ import {
   loadMessages,
 } from '../services/mongoApi';
 import EngagementChart from './EngagementChart';
+import MetricVsTimeChart from './MetricVsTimeChart';
+import PlayVideoCard from './PlayVideoCard';
+import GeneratedImageBlock from './GeneratedImageBlock';
+import YouTubeChannelDownload from './YouTubeChannelDownload';
 import './Chat.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -110,20 +115,25 @@ function StructuredParts({ parts }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Chat({ username, onLogout }) {
+export default function Chat({ username, firstName, lastName, onLogout }) {
+  const [activeMainTab, setActiveMainTab] = useState('chat');
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [images, setImages] = useState([]);
-  const [csvContext, setCsvContext] = useState(null);     // pending attachment chip
-  const [sessionCsvRows, setSessionCsvRows] = useState(null);    // parsed rows for JS tools
-  const [sessionCsvHeaders, setSessionCsvHeaders] = useState(null); // headers for tool routing
-  const [csvDataSummary, setCsvDataSummary] = useState(null);    // auto-computed column stats summary
-  const [sessionSlimCsv, setSessionSlimCsv] = useState(null);   // key-columns CSV string sent directly to Gemini
+  const [csvContext, setCsvContext] = useState(null);
+  const [sessionCsvRows, setSessionCsvRows] = useState(null);
+  const [sessionCsvHeaders, setSessionCsvHeaders] = useState(null);
+  const [csvDataSummary, setCsvDataSummary] = useState(null);
+  const [sessionSlimCsv, setSessionSlimCsv] = useState(null);
+  const [jsonContext, setJsonContext] = useState(null);
+  const [sessionJsonData, setSessionJsonData] = useState(null);
   const [streaming, setStreaming] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+
+  const userDisplayName = [firstName, lastName].filter(Boolean).join(' ').trim() || null;
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -179,6 +189,8 @@ export default function Chat({ username, onLogout }) {
     setCsvContext(null);
     setSessionCsvRows(null);
     setSessionCsvHeaders(null);
+    setJsonContext(null);
+    setSessionJsonData(null);
   };
 
   const handleSelectSession = (sessionId) => {
@@ -189,6 +201,8 @@ export default function Chat({ username, onLogout }) {
     setCsvContext(null);
     setSessionCsvRows(null);
     setSessionCsvHeaders(null);
+    setJsonContext(null);
+    setSessionJsonData(null);
   };
 
   const handleDeleteSession = async (sessionId, e) => {
@@ -227,6 +241,7 @@ export default function Chat({ username, onLogout }) {
     const files = [...e.dataTransfer.files];
 
     const csvFiles = files.filter((f) => f.name.endsWith('.csv') || f.type === 'text/csv');
+    const jsonFiles = files.filter((f) => f.name.endsWith('.json') || f.type === 'application/json');
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
 
     if (csvFiles.length > 0) {
@@ -235,13 +250,27 @@ export default function Chat({ username, onLogout }) {
       const parsed = parseCSV(text);
       if (parsed) {
         setCsvContext({ name: file.name, ...parsed });
-        // Parse rows, add computed engagement col, build summary + slim CSV
         const raw = parseCsvToRows(text);
         const { rows, headers } = enrichWithEngagement(raw.rows, raw.headers);
         setSessionCsvHeaders(headers);
         setSessionCsvRows(rows);
         setCsvDataSummary(computeDatasetSummary(rows, headers));
         setSessionSlimCsv(buildSlimCsv(rows, headers));
+      }
+    }
+
+    if (jsonFiles.length > 0) {
+      const file = jsonFiles[0];
+      const text = await fileToText(file);
+      try {
+        const data = JSON.parse(text);
+        const videos = data.videos || [];
+        const channelTitle = data.channelTitle || data.channel?.title || 'Channel';
+        setJsonContext({ name: file.name, videoCount: videos.length, channelTitle });
+        setSessionJsonData(data);
+      } catch {
+        setJsonContext(null);
+        setSessionJsonData(null);
       }
     }
 
@@ -262,6 +291,7 @@ export default function Chat({ username, onLogout }) {
     e.target.value = '';
 
     const csvFiles = files.filter((f) => f.name.endsWith('.csv') || f.type === 'text/csv');
+    const jsonFiles = files.filter((f) => f.name.endsWith('.json') || f.type === 'application/json');
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
 
     if (csvFiles.length > 0) {
@@ -275,6 +305,19 @@ export default function Chat({ username, onLogout }) {
         setSessionCsvRows(rows);
         setCsvDataSummary(computeDatasetSummary(rows, headers));
         setSessionSlimCsv(buildSlimCsv(rows, headers));
+      }
+    }
+    if (jsonFiles.length > 0) {
+      const file = jsonFiles[0];
+      const text = await fileToText(file);
+      try {
+        const data = JSON.parse(text);
+        const videos = data.videos || [];
+        setJsonContext({ name: file.name, videoCount: videos.length, channelTitle: data.channelTitle || 'Channel' });
+        setSessionJsonData(data);
+      } catch {
+        setJsonContext(null);
+        setSessionJsonData(null);
       }
     }
     if (imageFiles.length > 0) {
@@ -320,7 +363,7 @@ export default function Chat({ username, onLogout }) {
 
   const handleSend = async () => {
     const text = input.trim();
-    if ((!text && !images.length && !csvContext) || streaming || !activeSessionId) return;
+    if ((!text && !images.length && !csvContext && !jsonContext) || streaming || !activeSessionId) return;
 
     // Lazily create the session in DB on the very first message
     let sessionId = activeSessionId;
@@ -339,15 +382,16 @@ export default function Chat({ username, onLogout }) {
     const wantPythonOnly = PYTHON_ONLY_KEYWORDS.test(text);
     const wantCode = CODE_KEYWORDS.test(text) && !sessionCsvRows;
     const capturedCsv = csvContext;
-    const hasCsvInSession = !!sessionCsvRows || !!capturedCsv;
     // Base64 is only worth sending when Gemini will actually run Python
     const needsBase64 = !!capturedCsv && wantPythonOnly;
     // Mode selection:
-    //   useTools        — CSV loaded + no Python needed → client-side JS tools (free, fast)
-    //   useCodeExecution — Python explicitly needed (regression, histogram, etc.)
-    //   else            — Google Search streaming (also used for "tell me about this file")
-    const useTools = !!sessionCsvRows && !wantPythonOnly && !wantCode && !capturedCsv;
-    const useCodeExecution = wantPythonOnly || wantCode;
+    //   useTools        — CSV loaded + no Python needed → client-side JS tools
+    //   useYouTubeTools — Channel JSON loaded → YouTube tools (generateImage, plot_metric_vs_time, play_video, compute_stats_json)
+    //   useCodeExecution — Python explicitly needed
+    //   else            — Google Search streaming
+    const useTools = !!sessionCsvRows && !wantPythonOnly && !wantCode && !capturedCsv && !sessionJsonData;
+    const useYouTubeTools = !!sessionJsonData && !wantCode;
+    const useCodeExecution = wantPythonOnly || (wantCode && !sessionJsonData);
 
     // ── Build prompt ─────────────────────────────────────────────────────────
     // sessionSummary: auto-computed column stats, included with every message
@@ -358,38 +402,31 @@ export default function Chat({ username, onLogout }) {
       ? `\n\nFull dataset (key columns):\n\`\`\`csv\n${sessionSlimCsv}\n\`\`\``
       : '';
 
+    const jsonSummary = sessionJsonData
+      ? `Channel: ${sessionJsonData.channelTitle || 'Unknown'}. ${(sessionJsonData.videos || []).length} videos. Fields per video: title, description, duration, publishedAt, viewCount, likeCount, commentCount, url, thumbnailUrl. Use tools: plot_metric_vs_time(metric_field), play_video(identifier), compute_stats_json(field_name), generateImage(prompt).`
+      : '';
+    const jsonPrefix = sessionJsonData
+      ? `[YouTube channel JSON loaded: ${sessionJsonData.channelTitle || 'Channel'} with ${(sessionJsonData.videos || []).length} videos. Numeric fields: viewCount, likeCount, commentCount; duration is ISO 8601.]\n\n${jsonSummary}\n\n---\n\n`
+      : '';
+
     const csvPrefix = capturedCsv
       ? needsBase64
-        // Python path: send base64 so Gemini can load it with pandas
-        ? `[CSV File: "${capturedCsv.name}" | ${capturedCsv.rowCount} rows | Columns: ${capturedCsv.headers.join(', ')}]
-
-${sessionSummary}${slimCsvBlock}
-
-IMPORTANT — to load the full data in Python use this exact pattern:
-\`\`\`python
-import pandas as pd, io, base64
-df = pd.read_csv(io.BytesIO(base64.b64decode("${capturedCsv.base64}")))
-\`\`\`
-
----
-
-`
-        // Standard path: plain CSV text — no encoding needed
-        : `[CSV File: "${capturedCsv.name}" | ${capturedCsv.rowCount} rows | Columns: ${capturedCsv.headers.join(', ')}]
-
-${sessionSummary}${slimCsvBlock}
-
----
-
-`
+        ? `[CSV File: "${capturedCsv.name}" | ${capturedCsv.rowCount} rows | Columns: ${capturedCsv.headers.join(', ')}]\n\n${sessionSummary}${slimCsvBlock}\n\nIMPORTANT — to load the full data in Python use this exact pattern:\n\`\`\`python\nimport pandas as pd, io, base64\ndf = pd.read_csv(io.BytesIO(base64.b64decode("${capturedCsv.base64}")))\n\`\`\`\n\n---\n\n`
+        : `[CSV File: "${capturedCsv.name}" | ${capturedCsv.rowCount} rows | Columns: ${capturedCsv.headers.join(', ')}]\n\n${sessionSummary}${slimCsvBlock}\n\n---\n\n`
       : sessionSummary
       ? `[CSV columns: ${sessionCsvHeaders?.join(', ')}]\n\n${sessionSummary}\n\n---\n\n`
       : '';
 
-    // userContent  — displayed in bubble and stored in MongoDB (never contains base64)
-    // promptForGemini — sent to the Gemini API (may contain the full prefix)
-    const userContent = text || (images.length ? '(Image)' : '(CSV attached)');
-    const promptForGemini = csvPrefix + (text || (images.length ? 'What do you see in this image?' : 'Please analyze this CSV data.'));
+    const channelPrefix = sessionJsonData ? jsonPrefix : '';
+
+    const userContent =
+      text ||
+      (images.length ? '(Image)' : jsonContext ? '(JSON attached)' : csvContext ? '(CSV attached)' : '');
+    const promptForGemini =
+      channelPrefix +
+      csvPrefix +
+      (text ||
+        (images.length ? 'What do you see in this image?' : jsonContext ? 'I loaded YouTube channel JSON. Help me analyze it.' : csvContext ? 'Please analyze this CSV data.' : ''));
 
     const userMsg = {
       id: `u-${Date.now()}`,
@@ -398,6 +435,7 @@ ${sessionSummary}${slimCsvBlock}
       timestamp: new Date().toISOString(),
       images: [...images],
       csvName: capturedCsv?.name || null,
+      jsonName: jsonContext?.name || null,
     };
 
     setMessages((m) => [...m, userMsg]);
@@ -405,6 +443,7 @@ ${sessionSummary}${slimCsvBlock}
     const capturedImages = [...images];
     setImages([]);
     setCsvContext(null);
+    setJsonContext(null);
     setStreaming(true);
 
     // Store display text only — base64 is never persisted
@@ -432,20 +471,47 @@ ${sessionSummary}${slimCsvBlock}
     let toolCalls = [];
 
     try {
-      if (useTools) {
-        // ── Function-calling path: Gemini picks tool + args, JS executes ──────
-        console.log('[Chat] useTools=true | rows:', sessionCsvRows.length, '| headers:', sessionCsvHeaders);
-        const { text: answer, charts: returnedCharts, toolCalls: returnedCalls } = await chatWithCsvTools(
+      if (useYouTubeTools) {
+        const channelDataSummary = sessionJsonData
+          ? `${sessionJsonData.channelTitle || 'Channel'}, ${(sessionJsonData.videos || []).length} videos. Fields: viewCount, likeCount, commentCount, duration, publishedAt, title, url.`
+          : '';
+        const { text: answer, charts: returnedCharts, toolCalls: returnedCalls } = await chatWithYouTubeTools(
           history,
           promptForGemini,
-          sessionCsvHeaders,
-          (toolName, args) => executeTool(toolName, args, sessionCsvRows)
+          channelDataSummary,
+          (name, args) =>
+            executeYouTubeTool(name, args, {
+              channelData: sessionJsonData,
+              images: capturedImages,
+            }),
+          userDisplayName
         );
         fullContent = answer;
         toolCharts = returnedCharts || [];
         toolCalls = returnedCalls || [];
-        console.log('[Chat] returnedCharts:', JSON.stringify(toolCharts));
-        console.log('[Chat] toolCalls:', toolCalls.map((t) => t.name));
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: fullContent,
+                  charts: toolCharts.length ? toolCharts : undefined,
+                  toolCalls: toolCalls.length ? toolCalls : undefined,
+                }
+              : msg
+          )
+        );
+      } else if (useTools) {
+        const { text: answer, charts: returnedCharts, toolCalls: returnedCalls } = await chatWithCsvTools(
+          history,
+          promptForGemini,
+          sessionCsvHeaders,
+          (toolName, args) => executeTool(toolName, args, sessionCsvRows),
+          userDisplayName
+        );
+        fullContent = answer;
+        toolCharts = returnedCharts || [];
+        toolCalls = returnedCalls || [];
         setMessages((m) =>
           m.map((msg) =>
             msg.id === assistantId
@@ -459,19 +525,20 @@ ${sessionSummary}${slimCsvBlock}
           )
         );
       } else {
-        // ── Streaming path: code execution or search ─────────────────────────
-        for await (const chunk of streamChat(history, promptForGemini, imageParts, useCodeExecution)) {
+        for await (const chunk of streamChat(history, promptForGemini, imageParts, useCodeExecution, userDisplayName)) {
           if (abortRef.current) break;
           if (chunk.type === 'text') {
             fullContent += chunk.text;
+            const currentContent = fullContent;
             setMessages((m) =>
-              m.map((msg) => (msg.id === assistantId ? { ...msg, content: fullContent } : msg))
+              m.map((msg) => (msg.id === assistantId ? { ...msg, content: currentContent } : msg))
             );
           } else if (chunk.type === 'fullResponse') {
             structuredParts = chunk.parts;
+            const currentParts = structuredParts;
             setMessages((m) =>
               m.map((msg) =>
-                msg.id === assistantId ? { ...msg, content: '', parts: structuredParts } : msg
+                msg.id === assistantId ? { ...msg, content: '', parts: currentParts } : msg
               )
             );
           } else if (chunk.type === 'grounding') {
@@ -582,8 +649,26 @@ ${sessionSummary}${slimCsvBlock}
         </div>
       </aside>
 
-      {/* ── Main chat area ───────────────────────── */}
       <div className="chat-main">
+        <div className="chat-main-tabs">
+          <button
+            type="button"
+            className={activeMainTab === 'chat' ? 'active' : ''}
+            onClick={() => setActiveMainTab('chat')}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            className={activeMainTab === 'youtube' ? 'active' : ''}
+            onClick={() => setActiveMainTab('youtube')}
+          >
+            YouTube Channel Download
+          </button>
+        </div>
+        {activeMainTab === 'youtube' ? (
+          <YouTubeChannelDownload />
+        ) : (
         <>
         <header className="chat-header">
           <h2 className="chat-header-title">{activeSession?.title ?? 'New Chat'}</h2>
@@ -604,10 +689,12 @@ ${sessionSummary}${slimCsvBlock}
                 </span>
               </div>
 
-              {/* CSV badge on user messages */}
               {m.csvName && (
-                <div className="msg-csv-badge">
-                  📄 {m.csvName}
+                <div className="msg-csv-badge">📄 {m.csvName}</div>
+              )}
+              {m.jsonName && (
+                <div className="json-chip">
+                  📎 {m.jsonName}
                 </div>
               )}
 
@@ -648,14 +735,14 @@ ${sessionSummary}${slimCsvBlock}
                       <div key={i} className="tool-call-item">
                         <span className="tool-call-name">{tc.name}</span>
                         <span className="tool-call-args">{JSON.stringify(tc.args)}</span>
-                        {tc.result && !tc.result._chartType && (
+                        {tc.result && !tc.result._chartType && !tc.result._imageResult && (
                           <span className="tool-call-result">
                             → {JSON.stringify(tc.result).slice(0, 200)}
                             {JSON.stringify(tc.result).length > 200 ? '…' : ''}
                           </span>
                         )}
-                        {tc.result?._chartType && (
-                          <span className="tool-call-result">→ rendered chart</span>
+                        {(tc.result?._chartType || tc.result?._imageResult) && (
+                          <span className="tool-call-result">→ rendered</span>
                         )}
                       </div>
                     ))}
@@ -663,16 +750,29 @@ ${sessionSummary}${slimCsvBlock}
                 </details>
               )}
 
-              {/* Engagement charts from tool calls */}
-              {m.charts?.map((chart, ci) =>
-                chart._chartType === 'engagement' ? (
-                  <EngagementChart
-                    key={ci}
-                    data={chart.data}
-                    metricColumn={chart.metricColumn}
-                  />
-                ) : null
-              )}
+              {m.charts?.map((chart, ci) => {
+                if (chart._chartType === 'engagement')
+                  return <EngagementChart key={ci} data={chart.data} metricColumn={chart.metricColumn} />;
+                if (chart._chartType === 'metric_vs_time')
+                  return (
+                    <MetricVsTimeChart
+                      key={ci}
+                      data={chart.data}
+                      metricField={chart.metricField}
+                    />
+                  );
+                if (chart._chartType === 'play_video')
+                  return <PlayVideoCard key={ci} video={chart.video} />;
+                if (chart._imageResult)
+                  return (
+                    <GeneratedImageBlock
+                      key={ci}
+                      imageBase64={chart.imageBase64}
+                      mimeType={chart.mimeType}
+                    />
+                  );
+                return null;
+              })}
 
               {/* Search sources */}
               {m.grounding?.groundingChunks?.length > 0 && (
@@ -699,19 +799,24 @@ ${sessionSummary}${slimCsvBlock}
           <div ref={bottomRef} />
         </div>
 
-        {dragOver && <div className="chat-drop-overlay">Drop CSV or images here</div>}
+        {dragOver && <div className="chat-drop-overlay">Drop CSV, JSON, or images here</div>}
 
         {/* ── Input area ── */}
         <div className="chat-input-area">
-          {/* CSV chip */}
           {csvContext && (
             <div className="csv-chip">
               <span className="csv-chip-icon">📄</span>
               <span className="csv-chip-name">{csvContext.name}</span>
-              <span className="csv-chip-meta">
-                {csvContext.rowCount} rows · {csvContext.headers.length} cols
-              </span>
+              <span className="csv-chip-meta">{csvContext.rowCount} rows · {csvContext.headers.length} cols</span>
               <button className="csv-chip-remove" onClick={() => setCsvContext(null)} aria-label="Remove CSV">×</button>
+            </div>
+          )}
+          {jsonContext && (
+            <div className="json-chip">
+              <span>📎</span>
+              <span>{jsonContext.name}</span>
+              <span style={{ opacity: 0.8 }}>{jsonContext.videoCount} videos · {jsonContext.channelTitle}</span>
+              <button className="json-chip-remove" onClick={() => { setJsonContext(null); setSessionJsonData(null); }} aria-label="Remove JSON">×</button>
             </div>
           )}
 
@@ -731,7 +836,7 @@ ${sessionSummary}${slimCsvBlock}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.csv,text/csv"
+            accept="image/*,.csv,text/csv,.json,application/json"
             multiple
             style={{ display: 'none' }}
             onChange={handleFileSelect}
@@ -764,7 +869,7 @@ ${sessionSummary}${slimCsvBlock}
             ) : (
               <button
                 onClick={handleSend}
-                disabled={!input.trim() && !images.length && !csvContext}
+                disabled={!input.trim() && !images.length && !csvContext && !jsonContext}
               >
                 Send
               </button>
@@ -772,6 +877,7 @@ ${sessionSummary}${slimCsvBlock}
           </div>
         </div>
         </>
+        )}
       </div>
     </div>
   );

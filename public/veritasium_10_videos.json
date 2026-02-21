@@ -1,0 +1,19 @@
+{
+  "channelId": "UCHnyfMqiRRG1u-2MsSQLbXA",
+  "channelTitle": "Veritasium",
+  "channelUrl": "https://www.youtube.com/@veritasium",
+  "downloadedAt": "2025-02-21T00:00:00.000Z",
+  "videoCount": 10,
+  "videos": [
+    {"videoId": "v1", "title": "Video 1 - Science", "description": "", "duration": "PT15M", "publishedAt": "2025-01-15T00:00:00Z", "viewCount": 1500000, "likeCount": 45000, "commentCount": 3200, "thumbnailUrl": "https://i.ytimg.com/vi/v1/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v1", "transcript": null},
+    {"videoId": "v2", "title": "The Asbestos Video", "description": "", "duration": "PT22M", "publishedAt": "2025-01-10T00:00:00Z", "viewCount": 2100000, "likeCount": 62000, "commentCount": 4100, "thumbnailUrl": "https://i.ytimg.com/vi/v2/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v2", "transcript": null},
+    {"videoId": "v3", "title": "Video 3", "description": "", "duration": "PT8M", "publishedAt": "2025-01-05T00:00:00Z", "viewCount": 890000, "likeCount": 28000, "commentCount": 1900, "thumbnailUrl": "https://i.ytimg.com/vi/v3/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v3", "transcript": null},
+    {"videoId": "v4", "title": "Video 4", "description": "", "duration": "PT12M", "publishedAt": "2025-01-01T00:00:00Z", "viewCount": 1200000, "likeCount": 38000, "commentCount": 2100, "thumbnailUrl": "https://i.ytimg.com/vi/v4/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v4", "transcript": null},
+    {"videoId": "v5", "title": "Video 5", "description": "", "duration": "PT18M", "publishedAt": "2024-12-28T00:00:00Z", "viewCount": 950000, "likeCount": 31000, "commentCount": 1800, "thumbnailUrl": "https://i.ytimg.com/vi/v5/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v5", "transcript": null},
+    {"videoId": "v6", "title": "Video 6", "description": "", "duration": "PT9M", "publishedAt": "2024-12-25T00:00:00Z", "viewCount": 760000, "likeCount": 24000, "commentCount": 1500, "thumbnailUrl": "https://i.ytimg.com/vi/v6/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v6", "transcript": null},
+    {"videoId": "v7", "title": "Video 7", "description": "", "duration": "PT14M", "publishedAt": "2024-12-20T00:00:00Z", "viewCount": 1100000, "likeCount": 35000, "commentCount": 2200, "thumbnailUrl": "https://i.ytimg.com/vi/v7/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v7", "transcript": null},
+    {"videoId": "v8", "title": "Video 8", "description": "", "duration": "PT11M", "publishedAt": "2024-12-15T00:00:00Z", "viewCount": 830000, "likeCount": 26000, "commentCount": 1700, "thumbnailUrl": "https://i.ytimg.com/vi/v8/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v8", "transcript": null},
+    {"videoId": "v9", "title": "Video 9", "description": "", "duration": "PT16M", "publishedAt": "2024-12-10T00:00:00Z", "viewCount": 1400000, "likeCount": 42000, "commentCount": 2800, "thumbnailUrl": "https://i.ytimg.com/vi/v9/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v9", "transcript": null},
+    {"videoId": "v10", "title": "Video 10", "description": "", "duration": "PT7M", "publishedAt": "2024-12-05T00:00:00Z", "viewCount": 620000, "likeCount": 19000, "commentCount": 1200, "thumbnailUrl": "https://i.ytimg.com/vi/v10/hqdefault.jpg", "url": "https://www.youtube.com/watch?v=v10", "transcript": null}
+  ]
+}
